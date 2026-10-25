@@ -9,25 +9,39 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check TSETMC
+        continue-on-error: true
         run: |
+          mkdir -p probe-report
           echo "Checking TSETMC"
-          curl -L -sS --max-time 20 -o /tmp/tsetmc.html -w "TSETMC HTTP: %{http_code}\n" https://www.tsetmc.com/
+          curl -L -sS --connect-timeout 10 --max-time 30 \
+            -o /tmp/tsetmc.html \
+            -w "TSETMC HTTP: %{http_code}\n" \
+            https://www.tsetmc.com/ \
+            > probe-report/tsetmc.txt 2>&1
+          echo "curl_exit=$?" >> probe-report/tsetmc.txt
 
       - name: Check Codal
+        continue-on-error: true
         run: |
           echo "Checking Codal"
-          curl -L -sS --max-time 20 -o /tmp/codal.html -w "Codal HTTP: %{http_code}\n" https://codal.ir/
+          curl -L -sS --connect-timeout 10 --max-time 30 \
+            -o /tmp/codal.html \
+            -w "Codal HTTP: %{http_code}\n" \
+            https://codal.ir/ \
+            > probe-report/codal.txt 2>&1
+          echo "curl_exit=$?" >> probe-report/codal.txt
 
       - name: Create report
         if: always()
         run: |
-          mkdir -p probe-report
           {
             echo "# Source Probe Report"
             echo ""
-            echo "Tested from GitHub Actions."
+            echo "## TSETMC"
+            cat probe-report/tsetmc.txt 2>/dev/null || true
             echo ""
-            echo "TSETMC and Codal HTTP checks were executed in previous steps."
+            echo "## Codal"
+            cat probe-report/codal.txt 2>/dev/null || true
           } > probe-report/report.md
 
       - name: Upload report
@@ -35,4 +49,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: probe-report
-          path: probe-report/report.md
+          path: probe-report/
