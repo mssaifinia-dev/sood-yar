@@ -1,21 +1,38 @@
-# Runs the source probe from GitHub's servers (outside Iran) to compare with results from your own PC.
-# Start it by hand: GitHub repo > Actions > "Source probe" > Run workflow. No secrets needed.
+
 name: Source probe
+
 on:
   workflow_dispatch:
+
 jobs:
   probe:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-      - name: Self-test
-        run: node --test tools/probe/test_source_probe.mjs
-      - name: Probe sources
-        run: node tools/probe/source_probe.mjs --config tools/probe/sources.json --repeat 3 --timeout 30 --egress --out report
-      - uses: actions/upload-artifact@v4
+      - name: Check TSETMC
+        run: |
+          echo "Checking TSETMC"
+          curl -L -sS --max-time 20 -o /tmp/tsetmc.html -w "TSETMC HTTP: %{http_code}\n" https://www.tsetmc.com/
+
+      - name: Check Codal
+        run: |
+          echo "Checking Codal"
+          curl -L -sS --max-time 20 -o /tmp/codal.html -w "Codal HTTP: %{http_code}\n" https://codal.ir/
+
+      - name: Create report
+        if: always()
+        run: |
+          mkdir -p probe-report
+          {
+            echo "# Source Probe Report"
+            echo ""
+            echo "Tested from GitHub Actions."
+            echo ""
+            echo "TSETMC and Codal HTTP checks were executed in previous steps."
+          } > probe-report/report.md
+
+      - name: Upload report
+        if: always()
+        uses: actions/upload-artifact@v4
         with:
           name: probe-report
-          path: report.*
+          path: probe-report/report.md
